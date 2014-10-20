@@ -9,12 +9,13 @@
 import Foundation
 import Cocoa
 
-func generateQRImageFromString(string: String, sideLength:CGFloat) -> CGImage?
+func generateQRImageFromString(string: String, errorCorrection : String, sideLength:CGFloat) -> CGImage?
 {
-    let data = string.dataUsingEncoding(NSUTF8StringEncoding)
+    let data = string.dataUsingEncoding( NSISOLatin1StringEncoding)
     let filter = CIFilter(name:"CIQRCodeGenerator")
     filter.setDefaults()
     filter.setValue(data, forKey:"inputMessage")
+    filter.setValue(errorCorrection, forKey:"inputCorrectionLevel")
     let image = filter.outputImage
     
     let extent = CGRectIntegral(image.extent())
@@ -68,12 +69,13 @@ if !error {
 }
 
 if error {
-    println("usage: QRCode -i -o [-s -t]")
-    println("\t-i <input>\t\tthe string to be encoded")
-    println("\t-o <output>\t\tthe destination image file path");
-    println("\t-s <size>\t\tthe image side length in Pixel (optional; default = 100)")
-    println("\t-t <type>\t\tthe image type (optional jpg/jpeg, tif/tiff, png, bmp, gif; default = png)")
-    println("\t-help\t\t\tPrint this help message")
+    println("usage: QRCode -i -o [-s -t [jpg|jpeg|tif|tiff|png|bmp|gif] -e [L|M|Q|H] ]")
+    println("\t-i <input>\t\t\tthe string to be encoded")
+    println("\t-o <output>\t\t\tthe destination image file path");
+    println("\t-s <size>\t\t\tthe image side length in Pixel (optional; default = 100)")
+    println("\t-t <type>\t\t\tthe image type (optional jpg/jpeg, tif/tiff, png, bmp, gif; default = png)")
+    println("\t-e <error correction> the error correction format (optional L[=7%], M[=15%], Q[=25%], H[=30%] : default = M)")
+    println("\t-help\t\t\t\tPrint this help message")
     exit(1)
 } else {
     var fileExtension : String!
@@ -100,9 +102,16 @@ if error {
         imageType = kUTTypePNG
         fileExtension = "png"
     }
+    
+    var errorCorrection = "M"
+    if let correction = userDefaults.stringForKey("e") {
+        if contains(["L", "M", "Q", "H"], correction) {
+            errorCorrection = correction
+        }
+    }
 
     if let path = output.stringByDeletingPathExtension.stringByAppendingPathExtension(fileExtension) {
-        if let image = generateQRImageFromString(input, size) {
+        if let image = generateQRImageFromString(input, errorCorrection, size) {
             
             if let URL = NSURL(fileURLWithPath:path) {
                 let destination : CGImageDestinationRef = CGImageDestinationCreateWithURL(URL, imageType, 1, nil)
