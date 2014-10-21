@@ -22,8 +22,8 @@ func generateQRImageFromString(string: String, errorCorrection : String, sideLen
     let scale = min(sideLength / CGRectGetWidth(extent), sideLength / CGRectGetHeight(extent));
     let width = CGRectGetWidth(extent) * scale;
     let height = CGRectGetHeight(extent) * scale;
-    let colorspace = CGColorSpaceCreateDeviceRGB()
-    let alphaMask = CGBitmapInfo(rawValue:CGImageAlphaInfo.PremultipliedFirst.rawValue)
+    let colorspace = CGColorSpaceCreateDeviceGray()
+    let alphaMask = CGBitmapInfo(rawValue:CGImageAlphaInfo.None.rawValue)
     let bitmapRef = CGBitmapContextCreate(nil, UInt(width), UInt(height), 8, 4 * UInt(sideLength), colorspace, alphaMask)
     let context = CIContext(CGContext:bitmapRef, options:nil)
     
