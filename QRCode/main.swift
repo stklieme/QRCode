@@ -9,7 +9,7 @@
 import Foundation
 import Cocoa
 
-func generateQRImageFromString(string: String, errorCorrection : String, sideLength:CGFloat) -> CGImage?
+func generateQRImageFromString(string: String, errorCorrection: String, sideLength: CGFloat) -> CGImage?
 {
     let data = string.dataUsingEncoding( NSISOLatin1StringEncoding)
     let filter = CIFilter(name:"CIQRCodeGenerator")
@@ -19,12 +19,11 @@ func generateQRImageFromString(string: String, errorCorrection : String, sideLen
     let image = filter.outputImage
     
     let extent = CGRectIntegral(image.extent())
-    let scale = min(sideLength / CGRectGetWidth(extent), sideLength / CGRectGetHeight(extent));
-    let width = CGRectGetWidth(extent) * scale;
-    let height = CGRectGetHeight(extent) * scale;
+    let scale = sideLength / CGRectGetWidth(extent)
+    let sideLengthUInt = UInt(sideLength)
     let colorspace = CGColorSpaceCreateDeviceGray()
     let alphaMask = CGBitmapInfo(rawValue:CGImageAlphaInfo.None.rawValue)
-    let bitmapRef = CGBitmapContextCreate(nil, UInt(width), UInt(height), 8, 4 * UInt(sideLength), colorspace, alphaMask)
+    let bitmapRef = CGBitmapContextCreate(nil, sideLengthUInt, sideLengthUInt, 8, 4 * sideLengthUInt, colorspace, alphaMask)
     let context = CIContext(CGContext:bitmapRef, options:nil)
     
     let bitmapImage = context.createCGImage(image, fromRect:extent)
@@ -78,11 +77,10 @@ if error {
     println("\t-help\t\t\t\tPrint this help message")
     exit(1)
 } else {
-    var fileExtension : String!
-    var imageType : String!
+    var fileExtension = "png"
+    var imageType = kUTTypePNG
     
-    if let type = userDefaults.stringForKey("t") {
-        fileExtension = type
+    if var type = userDefaults.stringForKey("t") {
         
         switch type {
         case "jpg", "jpeg":
@@ -95,17 +93,15 @@ if error {
             imageType = kUTTypeGIF
             
         default:
-            imageType = kUTTypePNG
-            fileExtension = "png"
+            type = "png"
         }
-    } else {
-        imageType = kUTTypePNG
-        fileExtension = "png"
+        
+        fileExtension = type
     }
     
     var errorCorrection = "M"
     if let correction = userDefaults.stringForKey("e") {
-        if contains(["L", "M", "Q", "H"], correction) {
+        if contains(["L", "Q", "H"], correction) {
             errorCorrection = correction
         }
     }
@@ -114,7 +110,7 @@ if error {
         if let image = generateQRImageFromString(input, errorCorrection, size) {
             
             if let URL = NSURL(fileURLWithPath:path) {
-                let destination : CGImageDestinationRef = CGImageDestinationCreateWithURL(URL, imageType, 1, nil)
+                let destination = CGImageDestinationCreateWithURL(URL, imageType, 1, nil)
                 CGImageDestinationAddImage(destination, image, nil);
                 if CGImageDestinationFinalize(destination) {
                     exit(0)
