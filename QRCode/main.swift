@@ -9,7 +9,7 @@
 import Foundation
 import Cocoa
 
-func generateQRImageFromString(string: String, errorCorrection: String, sideLength: CGFloat) -> CGImage?
+func generateQRImageFromString(string: String, errorCorrection: String, sideLength: Int) -> CGImage?
 {
     let data = string.dataUsingEncoding( NSISOLatin1StringEncoding)
     let filter = CIFilter(name:"CIQRCodeGenerator")
@@ -19,11 +19,10 @@ func generateQRImageFromString(string: String, errorCorrection: String, sideLeng
     let image = filter.outputImage
     
     let extent = CGRectIntegral(image.extent())
-    let scale = sideLength / CGRectGetWidth(extent)
-    let sideLengthUInt = UInt(sideLength)
+    let scale = CGFloat(sideLength) / CGRectGetWidth(extent)
     let colorspace = CGColorSpaceCreateDeviceGray()
     let alphaMask = CGBitmapInfo(rawValue:CGImageAlphaInfo.None.rawValue)
-    let bitmapRef = CGBitmapContextCreate(nil, sideLengthUInt, sideLengthUInt, 8, 4 * sideLengthUInt, colorspace, alphaMask)
+    let bitmapRef = CGBitmapContextCreate(nil, sideLength, sideLength, 8, 4 * sideLength, colorspace, alphaMask)
     let context = CIContext(CGContext:bitmapRef, options:nil)
     
     let bitmapImage = context.createCGImage(image, fromRect:extent)
@@ -42,13 +41,13 @@ if contains(Process.arguments, "-help") {
 
 let userDefaults = NSUserDefaults.standardUserDefaults()
 
-var size : CGFloat!
+var size : Int!
 var input : String!
 if !error {
     if let sideLength  = userDefaults.stringForKey("s")?.toInt() {
-        size = CGFloat(sideLength)
+        size = sideLength
     } else {
-        size = 100.0
+        size = 100
     }
     
     if let inputString = userDefaults.stringForKey("i") {
@@ -118,9 +117,10 @@ if error {
             }
         }
     }
+
+    println("QR image could not be created")
+    exit(1)
 }
-println("QR image could not be created")
-exit(1)
 
 
 
