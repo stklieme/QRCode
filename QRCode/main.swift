@@ -9,57 +9,59 @@
 import Foundation
 import Cocoa
 
-func generateQRImageFromString(string: String, errorCorrection: String, sideLength: Int) -> CGImage?
+func generateQRImage(from string: String, errorCorrection: String, sideLength: Int) -> CGImage?
 {
-    let data = string.dataUsingEncoding( NSISOLatin1StringEncoding)
-    let filter = CIFilter(name:"CIQRCodeGenerator")
+    let data = string.data( using: .isoLatin1)
+    let filter = CIFilter(name:"CIQRCodeGenerator")!
     filter.setDefaults()
     filter.setValue(data, forKey:"inputMessage")
     filter.setValue(errorCorrection, forKey:"inputCorrectionLevel")
     let image = filter.outputImage
     
-    let extent = CGRectIntegral(image.extent())
-    let scale = CGFloat(sideLength) / CGRectGetWidth(extent)
+    let extent = image!.extent.integral
+    let scale = CGFloat(sideLength) / extent.width
     let colorspace = CGColorSpaceCreateDeviceGray()
-    let alphaMask = CGBitmapInfo(rawValue:CGImageAlphaInfo.None.rawValue)
-    let bitmapRef = CGBitmapContextCreate(nil, sideLength, sideLength, 8, 4 * sideLength, colorspace, alphaMask)
-    let context = CIContext(CGContext:bitmapRef, options:nil)
+    let alphaMask = CGImageAlphaInfo.none.rawValue
+    let bitmapRef = CGContext(data: nil, width: sideLength, height: sideLength, bitsPerComponent: 8, bytesPerRow: 4 * sideLength, space: colorspace, bitmapInfo: alphaMask)
+    let context = CIContext(cgContext:bitmapRef!, options:nil)
     
-    let bitmapImage = context.createCGImage(image, fromRect:extent)
+    let bitmapImage = context.createCGImage(image!, from:extent)
     
-    CGContextSetInterpolationQuality(bitmapRef, kCGInterpolationNone)
-    CGContextScaleCTM(bitmapRef, scale, scale)
-    CGContextDrawImage(bitmapRef, extent, bitmapImage)
-    return CGBitmapContextCreateImage(bitmapRef)
+    bitmapRef!.interpolationQuality = .none
+    bitmapRef?.scaleBy(x: scale, y: scale)
+    bitmapRef?.draw(bitmapImage!, in: extent)
+    return bitmapRef?.makeImage()
 }
 
 var error = false
 
-if contains(Process.arguments, "-help") {
+if CommandLine.arguments.contains("-help") {
     error = true
 }
 
-let userDefaults = NSUserDefaults.standardUserDefaults()
+let userDefaults = UserDefaults.standard
 
-var size : Int!
-var input : String!
+var size = 0
+var input = ""
+
 if !error {
-    if let sideLength  = userDefaults.stringForKey("s")?.toInt() {
+    if let sideLength  = Int(userDefaults.string(forKey: "s")!) {
         size = sideLength
     } else {
         size = 100
     }
     
-    if let inputString = userDefaults.stringForKey("i") {
+    if let inputString = userDefaults.string(forKey: "i") {
         input = inputString
     } else {
         error = true
     }
 }
 
-var output : String!
+var output = ""
+
 if !error {
-    if let outputPath = userDefaults.stringForKey("o") {
+    if let outputPath = userDefaults.string(forKey: "o") {
         output = outputPath
     } else {
         error = true
@@ -67,19 +69,19 @@ if !error {
 }
 
 if error {
-    println("usage: QRCode -i -o [-s -t [jpg|jpeg|tif|tiff|png|bmp|gif] -e [L|M|Q|H] ]")
-    println("\t-i <input>\t\t\tthe string to be encoded")
-    println("\t-o <output>\t\t\tthe destination image file path");
-    println("\t-s <size>\t\t\tthe image side length in Pixel (optional; default = 100)")
-    println("\t-t <type>\t\t\tthe image type (optional jpg/jpeg, tif/tiff, png, bmp, gif; default = png)")
-    println("\t-e <error correction> the error correction format (optional L[=7%], M[=15%], Q[=25%], H[=30%] : default = M)")
-    println("\t-help\t\t\t\tPrint this help message")
+    print("usage: QRCode -i -o [-s -t [jpg|jpeg|tif|tiff|png|bmp|gif] -e [L|M|Q|H] ]")
+    print("\t-i <input>\t\t\tthe string to be encoded")
+    print("\t-o <output>\t\t\tthe destination image file path");
+    print("\t-s <size>\t\t\tthe image side length in Pixel (optional; default = 100)")
+    print("\t-t <type>\t\t\tthe image type (optional jpg/jpeg, tif/tiff, png, bmp, gif; default = png)")
+    print("\t-e <error correction> the error correction format (optional L[=7%], M[=15%], Q[=25%], H[=30%] : default = M)")
+    print("\t-help\t\t\t\tPrint this help message")
     exit(1)
 } else {
     var fileExtension = "png"
     var imageType = kUTTypePNG
     
-    if var type = userDefaults.stringForKey("t") {
+    if var type = userDefaults.string(forKey: "t") {
         
         switch type {
         case "jpg", "jpeg":
@@ -99,27 +101,25 @@ if error {
     }
     
     var errorCorrection = "M"
-    if let correction = userDefaults.stringForKey("e") {
-        if contains(["L", "Q", "H"], correction) {
+    if let correction = userDefaults.string(forKey: "e") {
+        if ["L", "Q", "H"].contains(correction) {
             errorCorrection = correction
         }
     }
-
-    if let path = output.stringByDeletingPathExtension.stringByAppendingPathExtension(fileExtension) {
-        if let image = generateQRImageFromString(input, errorCorrection, size) {
-            
-            if let URL = NSURL(fileURLWithPath:path) {
-                let destination = CGImageDestinationCreateWithURL(URL, imageType, 1, nil)
-                CGImageDestinationAddImage(destination, image, nil);
-                if CGImageDestinationFinalize(destination) {
-                    exit(0)
-                }
+    
+    let destinationURL = URL(fileURLWithPath:output).deletingPathExtension().appendingPathExtension(fileExtension)
+    if let image = generateQRImage(from: input, errorCorrection: errorCorrection, sideLength: size) {
+        
+        if let destination = CGImageDestinationCreateWithURL(destinationURL as CFURL, imageType, 1, nil) {
+            CGImageDestinationAddImage(destination, image, nil);
+            if CGImageDestinationFinalize(destination) {
+                exit(EXIT_SUCCESS)
             }
         }
     }
-
-    println("QR image could not be created")
-    exit(1)
+    
+    print("QR image could not be created")
+    exit(EXIT_FAILURE)
 }
 
 
